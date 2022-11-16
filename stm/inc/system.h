@@ -10,13 +10,6 @@
 typedef enum _Display_Mode {
    SCALE_GRAIN,         // Grains:\n+-000.0
    SCALE_GRAM,          // Grams:\n+-00.000
-   SCALE_CALIBRATE_I,   // Enter Desired Wt\n000.0
-   SCALE_CALIBRATE_II,  // Place Weight\n000.0
-   SCALE_CALIBRATE_III, // Don't touch\nCalibrating...
-   LOAD_PROGRAM_I,      // Enter Desired Wt\n000.0
-   LOAD_PROGRAM_II,     // Enter # Rounds\n0000
-   LOAD_PROGRAM_III,    // Round: 0000\nWt: 000.0gn
-   // Above this is old 16x2, below is LCD
    MAIN_MENU,
    SETTINGS,
    CALIBRATE,
@@ -36,10 +29,6 @@ typedef enum _Scale_Mode {
    SCALE_MODE_GRAIN
 } Scale_Mode;
 
-// Basically expand this to any multi-part process that the dispenser will nead to perform
-//    Load a shell, fill, wait for dump, jump back to load command index
-//    Calibrate: prompt for tare, wait for confirmation, prompt for weight, promot for comfirm
-//    load a batch...have a counter for the load shell jump (command can be modified to decrement index)
 enum Commands {
    PWM_0_START =                 0x0001,
    PWM_0_STOP =                  0x0002,
@@ -49,17 +38,12 @@ enum Commands {
    STEP_0_START_TWO =            0x0008,
    STEP_0_SPEED_BUMP_COND =      0x0009,
    STEP_0_STOP_COND =            0x000a,
-   CALIBRATE_I =                 0x0010,
-   CALIBRATE_II =                0x0011,
-   CALIBRATE_III =               0x0012,
-   LOAD_I =                      0x0020,
-   LOAD_II =                     0x0021,
-   LOAD_III =                    0x0022,
    STEP_CHAMBER_DUMP =           0x0030,
    STEP_CHAMBER_INCREASE =       0x0031,
    STEP_CHAMBER_DECREASE =       0x0032,
    STEP_CHAMBER_ENABLE =         0x0033,
    STEP_CHAMBER_DISABLE =        0x0034,
+   RUN_PROGRAM
 };
 
 typedef struct _MachineState {
@@ -77,6 +61,7 @@ typedef struct _MachineState {
    float fGramsCurrent;
    float fGrainsCurrent;
    float fTargetWeight;
+   float fTrayWeight;
 
    Display_Mode displayMode;
    char strDisplay1[16];
@@ -108,6 +93,9 @@ typedef struct _Command {
  * What if instead we have motor queues and a UI queue?
  * should we worry about time?
  *
+ * After implementing a queue for the stepper and then the menus in the lcd...this command queue idea
+ * seems kind of cumbersome
+ *
  * main.c loop?
  */
 struct _CommandQueue {
@@ -119,9 +107,6 @@ struct _CommandQueue {
 } CommandQueue;
 
 // Create Command functions
-void createCalibrate(MachineState* pState, struct _CommandQueue* pQueue);
-void createLoad(MachineState* pState, struct _CommandQueue* pQueue);
-void createStep2Stage(MachineState* pState, struct _CommandQueue* pQueue, float fTargetWeight);
 void create_trickle(Command* Q_Step, int8_t* indexStep, float fTargetWeight);
 void create_dump(Command* Q_Step0, Command* Q_Step1, int8_t* indexStep0, int8_t* indexStep1, int16_t iDwell);
 // Button Handlers

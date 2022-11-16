@@ -18,21 +18,21 @@ char csHex[7];
 bool readCell()
 {
    uint8_t uBit;
-   if (!HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0)) { // Wait until it's ready pin is high when not ready)
+   if (!HAL_GPIO_ReadPin(CELL_DAT_GPIO_Port, CELL_DAT_Pin)) { // Wait until it's ready pin is high when not ready)
       uData = 0;
       for (int8_t i = 23; i >= 0; i--) {
-         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_SET);
+         HAL_GPIO_WritePin(CELL_CLK_GPIO_Port, CELL_CLK_Pin, GPIO_PIN_SET);
          timerDelay(2);//16);
-         uBit = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_0);
-         HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_RESET);
+         uBit = HAL_GPIO_ReadPin(CELL_DAT_GPIO_Port, CELL_DAT_Pin);
+         HAL_GPIO_WritePin(CELL_CLK_GPIO_Port, CELL_CLK_Pin, GPIO_PIN_RESET);
          if (uBit) {
             uData |= 1 << i;
          }
       }
       // 25th pulse finishes
-      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_SET);
+      HAL_GPIO_WritePin(CELL_CLK_GPIO_Port, CELL_CLK_Pin, GPIO_PIN_SET);
       timerDelay(2);//16);
-      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_1, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(CELL_CLK_GPIO_Port, CELL_CLK_Pin, GPIO_PIN_RESET);
 
       return TRUE;
    }

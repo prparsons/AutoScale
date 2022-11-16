@@ -252,6 +252,7 @@ int main(void)
    currentState.iMeasureDumpDwell = 500;
    currentState.iMenuSelection = 0;
    currentState.fTargetWeight = 0;
+   currentState.fTrayWeight = 2;
    currentState.iTricklePercent = 90;
    currentState.fGramPerCC = 10;
    currentState.iTrickle1RPMfast = 2;
@@ -261,14 +262,8 @@ int main(void)
 
    stepTableInit();
    stepperInit(&htim3, &htim2);
-
    stepperConfig(&motorList[1], Step_32);
-   //HAL_TIM_Base_Start_IT(&htim2);
-   //stepperEnable(&motorList[1], TRUE);
-
    stepperConfig(&motorList[0], Step_32);
-   //HAL_TIM_Base_Start_IT(&htim3);
-   //stepperEnable(&motorList[0], TRUE);
 
    filterInit();
 
@@ -317,9 +312,7 @@ int main(void)
          } else if (cButton == 'a') {
             setTare();
          } else if (cButton == 'b') {
-            createCalibrate(&currentState, &CommandQueue);
          } else if (cButton == 'c') {
-            createLoad(&currentState, &CommandQueue);
          } else if (cButton == 'd') {
             int i = ++CommandQueue.iStep[0];
             CommandQueue.Q_Step[0][i].uCommand = STEP_CHAMBER_DUMP;
@@ -737,11 +730,11 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, ST0_M2_Pin|GPIO_PIN_1|ST0_M3_Pin|ST0_M0_Pin
-                          |ST0_M1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, ST0_M2_Pin|CELL_CLK_Pin|ST0_M3_Pin|ST2_M3_Pin
+                          |ST0_M0_Pin|ST0_M1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, ST0_STBY_Pin|ST0_EN_Pin|GPIO_PIN_15, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, ST0_STBY_Pin|ST2_EN_Pin|ST0_EN_Pin|GPIO_PIN_15, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(CS_GPIO_Port, CS_Pin, GPIO_PIN_SET);
@@ -753,41 +746,46 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(DC_GPIO_Port, DC_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, ST1_EN_Pin|ST1_STBY_Pin|ST1_M0_Pin|ST1_M1_Pin
+  HAL_GPIO_WritePin(GPIOB, ST2_STBY_Pin|ST2_M1_Pin|ST2_M2_Pin|ST2_M0_Pin
+                          |ST1_EN_Pin|ST1_STBY_Pin|ST1_M0_Pin|ST1_M1_Pin
                           |ST1_M2_Pin|ST1_M3_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : ST0_M2_Pin ST0_M3_Pin RST_Pin ST0_M0_Pin
-                           ST0_M1_Pin */
-  GPIO_InitStruct.Pin = ST0_M2_Pin|ST0_M3_Pin|RST_Pin|ST0_M0_Pin
-                          |ST0_M1_Pin;
+  /*Configure GPIO pins : ST0_M2_Pin ST0_M3_Pin ST2_M3_Pin RST_Pin
+                           ST0_M0_Pin ST0_M1_Pin */
+  GPIO_InitStruct.Pin = ST0_M2_Pin|ST0_M3_Pin|ST2_M3_Pin|RST_Pin
+                          |ST0_M0_Pin|ST0_M1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PC0 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  /*Configure GPIO pin : CELL_DAT_Pin */
+  GPIO_InitStruct.Pin = CELL_DAT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+  HAL_GPIO_Init(CELL_DAT_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PC1 */
-  GPIO_InitStruct.Pin = GPIO_PIN_1;
+  /*Configure GPIO pin : CELL_CLK_Pin */
+  GPIO_InitStruct.Pin = CELL_CLK_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+  HAL_GPIO_Init(CELL_CLK_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : ST0_STBY_Pin CS_Pin ST0_EN_Pin PA15 */
-  GPIO_InitStruct.Pin = ST0_STBY_Pin|CS_Pin|ST0_EN_Pin|GPIO_PIN_15;
+  /*Configure GPIO pins : ST0_STBY_Pin ST2_EN_Pin CS_Pin ST0_EN_Pin
+                           PA15 */
+  GPIO_InitStruct.Pin = ST0_STBY_Pin|ST2_EN_Pin|CS_Pin|ST0_EN_Pin
+                          |GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : DC_Pin ST1_EN_Pin ST1_STBY_Pin ST1_M0_Pin
+  /*Configure GPIO pins : DC_Pin ST2_STBY_Pin ST2_M1_Pin ST2_M2_Pin
+                           ST2_M0_Pin ST1_EN_Pin ST1_STBY_Pin ST1_M0_Pin
                            ST1_M1_Pin ST1_M2_Pin ST1_M3_Pin */
-  GPIO_InitStruct.Pin = DC_Pin|ST1_EN_Pin|ST1_STBY_Pin|ST1_M0_Pin
+  GPIO_InitStruct.Pin = DC_Pin|ST2_STBY_Pin|ST2_M1_Pin|ST2_M2_Pin
+                          |ST2_M0_Pin|ST1_EN_Pin|ST1_STBY_Pin|ST1_M0_Pin
                           |ST1_M1_Pin|ST1_M2_Pin|ST1_M3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -800,17 +798,10 @@ static void MX_GPIO_Init(void)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-   /*
-    * Current way this works, can't leave stepper enabled but not stepping, so no holding torque
-    * ...since we recognize continuous in the stepper table as -1, can we then have
-    * enable and disable not only set the en pin, but also stop the timer?  That way
-    * we can leave it enabled without stepping and have some holding torque.
-    */
-
    for (int i = 0; i < 2; i++) {
       if (htim == motorList[i].htim) {
          if (motorList[i].bStepOnTimer) {
-            HAL_GPIO_WritePin(motorList[i].gpio_M, motorList[i].m2, GPIO_PIN_RESET); //m2 == m_clk
+            HAL_GPIO_WritePin(motorList[i].gpio_M2, motorList[i].m2, GPIO_PIN_RESET); //m2 == m_clk
             timerDelay(16);//that updates timer stuff without the config...
 
             if (motorList[i].timerIndexCurrent++ == motorList[i].timerIndexStop) {
@@ -833,7 +824,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
                __HAL_TIM_SET_AUTORELOAD(htim, motorList[i].arStepper_Table[motorList[i].tableIndexCurrent].uNewDelay);
                __HAL_TIM_SET_COUNTER(htim, 0xffffffff);
             }
-            HAL_GPIO_WritePin(motorList[i].gpio_M, motorList[i].m2, GPIO_PIN_SET);
+            HAL_GPIO_WritePin(motorList[i].gpio_M2, motorList[i].m2, GPIO_PIN_SET);
          } else {
             if (motorList[i].timerIndexCurrent++ == motorList[i].timerIndexStop) {
                if (motorList[i].tableIndexCurrent == 0) {

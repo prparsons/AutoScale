@@ -29,8 +29,12 @@ typedef struct _stepperTimerTable {
 
 typedef struct _stepperMotor {
    TIM_HandleTypeDef* htim;
-   GPIO_TypeDef* gpio_EnStby;
-   GPIO_TypeDef* gpio_M;
+   GPIO_TypeDef* gpio_En;
+   GPIO_TypeDef* gpio_Stby;
+   GPIO_TypeDef* gpio_M0;
+   GPIO_TypeDef* gpio_M1;
+   GPIO_TypeDef* gpio_M2;
+   GPIO_TypeDef* gpio_M3;
    uint16_t en;
    uint16_t stby;
    uint16_t m0; // updw

@@ -199,8 +199,12 @@ void stepBumpSpeed()
 void stepperInit(TIM_HandleTypeDef* htim1, TIM_HandleTypeDef* htim2)
 {
    motorList[0].htim = htim1;
-   motorList[0].gpio_EnStby = ST1_EN_GPIO_Port;
-   motorList[0].gpio_M = ST1_EN_GPIO_Port;
+   motorList[0].gpio_En = ST1_EN_GPIO_Port;
+   motorList[0].gpio_Stby = ST1_STBY_GPIO_Port;
+   motorList[0].gpio_M0 = ST1_M0_GPIO_Port;
+   motorList[0].gpio_M1 = ST1_M1_GPIO_Port;
+   motorList[0].gpio_M2 = ST1_M2_GPIO_Port;
+   motorList[0].gpio_M3 = ST1_M3_GPIO_Port;
    motorList[0].en = ST1_EN_Pin;
    motorList[0].stby = ST1_STBY_Pin;
    motorList[0].m0 = ST1_M0_Pin;
@@ -215,8 +219,12 @@ void stepperInit(TIM_HandleTypeDef* htim1, TIM_HandleTypeDef* htim2)
 
 
    motorList[1].htim = htim2;
-   motorList[1].gpio_EnStby = ST0_EN_GPIO_Port;
-   motorList[1].gpio_M = ST0_M0_GPIO_Port;
+   motorList[1].gpio_En = ST0_EN_GPIO_Port;
+   motorList[1].gpio_Stby = ST0_STBY_GPIO_Port;
+   motorList[1].gpio_M0 = ST0_M0_GPIO_Port;
+   motorList[1].gpio_M1 = ST0_M1_GPIO_Port;
+   motorList[1].gpio_M2 = ST0_M2_GPIO_Port;
+   motorList[1].gpio_M3 = ST0_M3_GPIO_Port;
    motorList[1].en = ST0_EN_Pin;
    motorList[1].stby = ST0_STBY_Pin;
    motorList[1].m0 = ST0_M0_Pin;
@@ -232,87 +240,116 @@ void stepperInit(TIM_HandleTypeDef* htim1, TIM_HandleTypeDef* htim2)
 
 void stepperConfig(StepperMotor* pMotor, uint8_t uConfig)
 {
-   GPIO_TypeDef* gpio_EnStby = pMotor->gpio_EnStby;
-   GPIO_TypeDef* gpio_M = pMotor->gpio_M;
+   GPIO_TypeDef* gpio_En = pMotor->gpio_En;
+   GPIO_TypeDef* gpio_Stby = pMotor->gpio_Stby;
+   GPIO_TypeDef* gpio_M0 = pMotor->gpio_M0;
+   GPIO_TypeDef* gpio_M1 = pMotor->gpio_M1;
+   GPIO_TypeDef* gpio_M2 = pMotor->gpio_M2;
+   GPIO_TypeDef* gpio_M3 = pMotor->gpio_M3;
+
    // turn off everything
-   gpio_EnStby -> ODR &= ~(pMotor->en + pMotor->stby);
-   gpio_M -> ODR &= ~(pMotor->m0 + pMotor->m1 + pMotor->m2 + pMotor->m3);
+   gpio_En -> ODR &= ~(pMotor->en);
+   gpio_Stby -> ODR &= ~(pMotor->stby);
+   gpio_M0 -> ODR &= ~(pMotor->m0);
+   gpio_M1 -> ODR &= ~(pMotor->m1);
+   gpio_M2 -> ODR &= ~(pMotor->m2);
+   gpio_M3 -> ODR &= ~(pMotor->m3);
 
    HAL_Delay(1000);//timerDelay(16); // should be 1sec
 
      if (uConfig & Step_Var) {
         switch (uConfig & Step_128) {
            case Step_2:
-              gpio_M -> ODR |= pMotor->m0;
+              gpio_M0 -> ODR |= pMotor->m0;
               break;
            case Step_4:
-              gpio_M -> ODR |= pMotor->m1;
+              gpio_M1 -> ODR |= pMotor->m1;
               break;
            case Step_8:
-              gpio_M -> ODR |= pMotor->m0 + pMotor->m1;
+              gpio_M0 -> ODR |= pMotor->m0;
+              gpio_M1 -> ODR |= pMotor->m1;
               break;
            case Step_16:
-              gpio_M -> ODR |= pMotor->m2;
+              gpio_M2 -> ODR |= pMotor->m2;
               break;
            case Step_32:
-              gpio_M -> ODR |= pMotor->m0 + pMotor->m2;
+              gpio_M0 -> ODR |= pMotor->m0;
+              gpio_M2 -> ODR |= pMotor->m2;
               break;
            case Step_64:
-              gpio_M -> ODR |= pMotor->m1 + pMotor->m2;
+              gpio_M1 -> ODR |= pMotor->m1;
+              gpio_M2 -> ODR |= pMotor->m2;
               break;
            case Step_128:
-              gpio_M -> ODR |= pMotor->m0 + pMotor->m1 + pMotor->m2;
+              gpio_M0 -> ODR |= pMotor->m0;
+              gpio_M1 -> ODR |= pMotor->m1;
+              gpio_M2 -> ODR |= pMotor->m2;
               break;
         }
      } else {
         switch (uConfig & Step_128) {
            case Step_Full:
-              gpio_M -> ODR |= pMotor->m3;
+              gpio_M3 -> ODR |= pMotor->m3;
               break;
            case Step_2:
-              gpio_M -> ODR |= pMotor->m0 + pMotor->m3;
+              gpio_M0 -> ODR |= pMotor->m0;
+              gpio_M3 -> ODR |= pMotor->m3;
               break;
            case Step_4:
-              gpio_M -> ODR |= pMotor->m1 + pMotor->m3;
+              gpio_M1 -> ODR |= pMotor->m1;
+              gpio_M3 -> ODR |= pMotor->m3;
               break;
            case Step_8:
-              gpio_M -> ODR |= pMotor->m0 + pMotor->m1 + pMotor->m3;
+              gpio_M0 -> ODR |= pMotor->m0;
+              gpio_M1 -> ODR |= pMotor->m1;
+              gpio_M3 -> ODR |= pMotor->m3;
               break;
            case Step_16:
-              gpio_M -> ODR |= pMotor->m2 + pMotor->m3;
+              gpio_M2 -> ODR |= pMotor->m2;
+              gpio_M3 -> ODR |= pMotor->m3;
               break;
            case Step_32:
-              gpio_M -> ODR |= pMotor->m0 + pMotor->m2 + pMotor->m3;
+              gpio_M0 -> ODR |= pMotor->m0;
+              gpio_M2 -> ODR |= pMotor->m2;
+              gpio_M3 -> ODR |= pMotor->m3;
               break;
            case Step_64:
-              gpio_M -> ODR |= pMotor->m1 + pMotor->m2 + pMotor->m3;
+              gpio_M1 -> ODR |= pMotor->m1;
+              gpio_M2 -> ODR |= pMotor->m2;
+              gpio_M3 -> ODR |= pMotor->m3;
               break;
            case Step_128:
-              gpio_M -> ODR |= pMotor->m0 + pMotor->m1 + pMotor->m2 + pMotor->m3;
+              gpio_M0 -> ODR |= pMotor->m0;
+              gpio_M1 -> ODR |= pMotor->m1;
+              gpio_M2 -> ODR |= pMotor->m2;
+              gpio_M3 -> ODR |= pMotor->m3;
               break;
         }
      }
 
      timerDelay(16);// Delay 1us
-     gpio_EnStby -> ODR |= pMotor->stby;
+     gpio_Stby -> ODR |= pMotor->stby;
      timerDelay(16*200);//delay 200us
-     gpio_M -> ODR &= ~(pMotor->m0 + pMotor->m1 + pMotor->m2 + pMotor->m3);
+     gpio_M0 -> ODR &= ~(pMotor->m0);
+     gpio_M1 -> ODR &= ~(pMotor->m1);
+     gpio_M2 -> ODR &= ~(pMotor->m2);
+     gpio_M3 -> ODR &= ~(pMotor->m3);
 }
 
 void stepperEnable(StepperMotor* pMotor, bool bEnable)
 {
-   if (bEnable) HAL_GPIO_WritePin(pMotor->gpio_EnStby, pMotor->en, GPIO_PIN_SET);
-   else HAL_GPIO_WritePin(pMotor->gpio_EnStby, pMotor->en, GPIO_PIN_RESET);
+   if (bEnable) HAL_GPIO_WritePin(pMotor->gpio_En, pMotor->en, GPIO_PIN_SET);
+   else HAL_GPIO_WritePin(pMotor->gpio_En, pMotor->en, GPIO_PIN_RESET);
 }
 
 void stepperSetCW(StepperMotor* pMotor)
 {
-   HAL_GPIO_WritePin(pMotor->gpio_M, pMotor->m3, GPIO_PIN_SET);
+   HAL_GPIO_WritePin(pMotor->gpio_M3, pMotor->m3, GPIO_PIN_SET);
 }
 
 void stepperSetCCW(StepperMotor* pMotor)
 {
-   HAL_GPIO_WritePin(pMotor->gpio_M, pMotor->m3, GPIO_PIN_RESET);
+   HAL_GPIO_WritePin(pMotor->gpio_M3, pMotor->m3, GPIO_PIN_RESET);
 }
 
 void stepper_30CW(StepperMotor* pMotor)

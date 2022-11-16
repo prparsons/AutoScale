@@ -6,69 +6,6 @@
 #include "motor.h"
 
 
-void createCalibrate(MachineState* pState, struct _CommandQueue* pQueue)
-{
-   strcpy(pState->strDisplay1, "000.0");
-   pState->displayMode = SCALE_CALIBRATE_I;
-
-   pQueue->iHi = 2;
-   Command* pQ = &(pQueue->Q_High[2]);
-
-   pQ->uCommand = CALIBRATE_I;
-   pQ->pButtonHandler = &button_Calibrate;
-   pQ->uButton[0] = 0; // Entering weight
-   pQ--;
-
-   pQ->uCommand = CALIBRATE_II;
-   // Q will set target weight from above, once it's reached it will continue
-   pQ--;
-
-   pQ->uCommand = CALIBRATE_III;
-   // Change message, wait short delay, then
-   // just call the calibrate function
-}
-void createLoad(MachineState* pState, struct _CommandQueue* pQueue)
-{
-   strcpy(pState->strDisplay1, "000.0");
-   pState->displayMode = LOAD_PROGRAM_I;
-
-   pQueue->iHi = 2;
-   Command* pQ = &(pQueue->Q_High[2]);
-
-   pQ->uCommand = LOAD_I;
-   pQ->pButtonHandler = &button_Load_Wt;
-   pQ->uButton[0] = 0;
-   pQ--;
-
-   pQ->uCommand = LOAD_II;
-   pQ->pButtonHandler = &button_Load_Rds;
-   pQ->uButton[0] = 0;
-   pQ--;
-
-   pQ->uCommand = LOAD_III;
-   pQ->uButton[0] = 0;
-   pQ->uButton[1] = 0;
-}
-
-void createStep2Stage(MachineState* pState, struct _CommandQueue* pQueue, float fTargetWeight)
-{
-   Command* pQ = &(pQueue->Q_High[pQueue->iHi + 3]);
-
-   pQ->uCommand = STEP_0_START_TWO;
-   pQ--;
-
-   pQ->uCommand = STEP_0_SPEED_BUMP_COND;
-   pQ->fTargetWeight = fTargetWeight * 0.9;
-   pQ--;
-
-   pQ->uCommand = STEP_0_SPEED_BUMP_COND;
-   pQ->fTargetWeight = fTargetWeight;
-
-   if (pQueue->iHi >= 0) pQueue->iHi += 3;
-   else pQueue->iHi = 2;
-}
-
-
 void create_trickle(Command* Q_Step, int8_t* indexStep, float fTargetWeight)
 {
    (*indexStep)++;
@@ -213,154 +150,7 @@ void runQueue(MachineState* pCurrentState, uint8_t uButton)
             }
          } break;
 
-         case STEP_0_START_TWO:
-            strcpy(pCurrentState->strDisplay1, createString(pCurrentState->scaleMode));
-            stepRunTwo();
-            CommandQueue.iHi--;
-            break;
-
-         case STEP_0_SPEED_BUMP_COND: {
-            strcpy(pCurrentState->strDisplay1, createString(pCurrentState->scaleMode));
-            bool bMadeWeight = FALSE;
-            if (pCurrentState->scaleMode == SCALE_MODE_GRAIN) bMadeWeight = pCurrentState->fGrainsCurrent >= CommandQueue.Q_High[i].fTargetWeight;
-            else bMadeWeight = pCurrentState->fGramsCurrent >= CommandQueue.Q_High[i].fTargetWeight;
-            if (bMadeWeight) {
-               stepBumpSpeed();
-               CommandQueue.iHi--;
-            }
-            // else update str1 with weight
-         } break;
-
-         case STEP_0_STOP_COND: {
-            strcpy(pCurrentState->strDisplay1, createString(pCurrentState->scaleMode));
-            bool bMadeWeight = FALSE;
-            if (pCurrentState->scaleMode == SCALE_MODE_GRAIN) bMadeWeight = pCurrentState->fGrainsCurrent >= CommandQueue.Q_High[i].fTargetWeight;
-            else bMadeWeight = pCurrentState->fGramsCurrent >= CommandQueue.Q_High[i].fTargetWeight;
-            if (bMadeWeight) {
-               stepBumpSpeed();
-               CommandQueue.iHi--;
-            }
-         } break;
-
-         case CALIBRATE_I:
-            if (uButton != 255) {
-               if (convertButtonChar(uButton) == 'g') {
-                  if ((--CommandQueue.iHi < 0) || // Make sure we have a next command
-                        (CommandQueue.Q_High[CommandQueue.iHi].uCommand != CALIBRATE_II) || // Make sure it's the right command
-                        (CommandQueue.Q_High[i].uButton[0] == 0)) { // Make sure we aren't trying to calibrate nothing
-                     Error_Handler();
-                     CommandQueue.iHi = -1;
-                     pCurrentState->displayMode = SCALE_GRAIN;
-                     return;
-                  }
-
-                  // Pass weight on
-                  CommandQueue.Q_High[CommandQueue.iHi].fTargetWeight = ((float)CommandQueue.Q_High[i].uButton[0]) * 0.1;
-                  // Set display mode
-                  pCurrentState->displayMode = SCALE_CALIBRATE_II;
-               } else {
-                  // Run the button handler
-                  CommandQueue.Q_High[i].pButtonHandler(pCurrentState, &(CommandQueue.Q_High[i].uButton[0]), convertButton(uButton));
-               }
-            }
-            break;
-
-         case CALIBRATE_II: {
-            strcpy(pCurrentState->strDisplay1, createString(pCurrentState->scaleMode));
-            bool bMadeWeight = FALSE;
-            if (pCurrentState->scaleMode == SCALE_MODE_GRAM) bMadeWeight = pCurrentState->fGramsCurrent >= CommandQueue.Q_High[i].fTargetWeight * 0.95;
-            else bMadeWeight = pCurrentState->fGrainsCurrent >= CommandQueue.Q_High[i].fTargetWeight * 0.95;
-            if (bMadeWeight) { // Once we're close (calibration...might not be accurate right now)
-               if ((--CommandQueue.iHi < 0) || // Make sure we have a next command
-                     (CommandQueue.Q_High[CommandQueue.iHi].uCommand != CALIBRATE_III)) { // Make sure it's the right command
-                  Error_Handler();
-                  CommandQueue.iHi = -1;
-                  pCurrentState->displayMode = SCALE_GRAIN;
-                  return;
-               }
-
-               // Pass weight on
-               CommandQueue.Q_High[CommandQueue.iHi].fTargetWeight = CommandQueue.Q_High[i].fTargetWeight;
-               // Set display mode
-               pCurrentState->displayMode = SCALE_CALIBRATE_III;
-            }
-         } break;
-
-         case CALIBRATE_III:
-            //*** Need to do both grams and grains (display should have specified when entered)
-            //*** need to delay/wait a bit without blocking...(make sure display was updated)
-            strcpy(pCurrentState->strDisplay1, createString(pCurrentState->scaleMode));
-            if (pCurrentState->scaleMode == SCALE_MODE_GRAM) {
-               calibrateGrams(CommandQueue.Q_High[i].fTargetWeight);
-               pCurrentState->displayMode = SCALE_GRAM;
-            } else {
-               calibrateGrains(CommandQueue.Q_High[i].fTargetWeight);
-               pCurrentState->displayMode = SCALE_GRAIN;
-            }
-            CommandQueue.iHi = -1;
-            break;
-
-         case LOAD_I:
-            if (uButton != 255) {
-               if (convertButtonChar(uButton) == 'g') {
-                  if ((--CommandQueue.iHi < 0) || // Make sure we have a next command
-                        (CommandQueue.Q_High[CommandQueue.iHi].uCommand != LOAD_II) || // Make sure it's the right command
-                        (CommandQueue.Q_High[i].uButton[0] == 0)) { // Make sure we aren't trying to load nothing
-                     Error_Handler();
-                     CommandQueue.iHi = -1;
-                     if (pCurrentState->scaleMode == SCALE_MODE_GRAM) pCurrentState->displayMode = SCALE_GRAM;
-                     else pCurrentState->displayMode = SCALE_GRAIN;
-                     return;
-                  }
-
-                  // Pass weight on
-                  CommandQueue.Q_High[CommandQueue.iHi].fTargetWeight = ((float)CommandQueue.Q_High[i].uButton[0]) * 0.1;
-                  // Set display mode
-                  pCurrentState->displayMode = LOAD_PROGRAM_II;
-                  strcpy(pCurrentState->strDisplay1, "0000");
-               } else {
-                  // Run the button handler
-                  CommandQueue.Q_High[i].pButtonHandler(pCurrentState, &(CommandQueue.Q_High[i].uButton[0]), convertButton(uButton));
-               }
-            }
-            break;
-
-         case LOAD_II:
-            if (uButton != 255) {
-               if (convertButtonChar(uButton) == 'g') {
-                  if ((--CommandQueue.iHi < 0) || // Make sure we have a next command
-                        (CommandQueue.Q_High[CommandQueue.iHi].uCommand != LOAD_III) || // Make sure it's the right command
-                        (CommandQueue.Q_High[i].uButton[0] == 0)) { // Make sure we aren't trying to load nothing
-                     Error_Handler();
-                     CommandQueue.iHi = -1;
-                     if (pCurrentState->scaleMode == SCALE_MODE_GRAM) pCurrentState->displayMode = SCALE_GRAM;
-                     else pCurrentState->displayMode = SCALE_GRAIN;
-                     return;
-                  }
-
-                  // Pass weight on
-                  CommandQueue.Q_High[CommandQueue.iHi].fTargetWeight = CommandQueue.Q_High[i].fTargetWeight;
-                  CommandQueue.Q_High[CommandQueue.iHi].uButton[0] = 0;
-                  CommandQueue.Q_High[CommandQueue.iHi].uButton[1] = CommandQueue.Q_High[i].uButton[0];
-                  CommandQueue.Q_High[CommandQueue.iHi].uCommandIndex = 0;
-                  uintToString(0, 4, pCurrentState->strDisplay2);
-                  uintToString(CommandQueue.Q_High[CommandQueue.iHi].uButton[1], 4, pCurrentState->strDisplay3);
-                  // Set display mode
-                  pCurrentState->displayMode = LOAD_PROGRAM_III;
-               } else {
-                  // Run the button handler
-                  CommandQueue.Q_High[i].pButtonHandler(pCurrentState, &(CommandQueue.Q_High[i].uButton[0]), convertButton(uButton));
-               }
-            }
-            break;
-
-         case LOAD_III:
-            // str1 weight (step commands will load it too)
-            // str2 current
-            // str3 total
-            // uButton[0]: current round index
-            // uButton[1]: total num rounds
-            strcpy(pCurrentState->strDisplay1, createString(pCurrentState->scaleMode));
+         case RUN_PROGRAM: {
             float fWeight = pCurrentState->scaleMode == SCALE_MODE_GRAM ? pCurrentState->fGramsCurrent : pCurrentState->fGrainsCurrent;
             switch (CommandQueue.Q_High[i].uCommandIndex) {
                case 0: {
@@ -368,49 +158,40 @@ void runQueue(MachineState* pCurrentState, uint8_t uButton)
                   create_dump(CommandQueue.Q_Step[0], CommandQueue.Q_Step[1], &(CommandQueue.iStep[0]), &(CommandQueue.iStep[1]), pCurrentState->iMeasureDumpDwell);
                   CommandQueue.Q_High[i].uCommandIndex++;
                } break;
+
                case 1:
-                  // dispense program
-                  // need a trickle dwell as the first step
-                  //create_trickle(CommandQueue.Q_Step[2], CommandQueue.iStep[2], CommandQueue.Q_High[i].fTargetWeight);
-                  //createStep2Stage(pCurrentState, &CommandQueue, CommandQueue.Q_High[i].fTargetWeight);
+                  // trickle the last little bit
                   CommandQueue.Q_High[i].uCommandIndex++;
                   break;
+
                case 2:
                   if (fWeight <= CommandQueue.Q_High[i].fTargetWeight * 0.9) {
                      // They picked it up
                      CommandQueue.Q_High[i].uCommandIndex++;
                   }
                   break;
-               case 3:
-                  CommandQueue.Q_High[i].uButton[0] += 1;
-                  if (CommandQueue.Q_High[i].uButton[0] == CommandQueue.Q_High[i].uButton[1]) {
-                     // Done loading
-                     CommandQueue.iHi = -1;
-                     pCurrentState->displayMode = SCALE_GRAIN;
-                     return;
-                  }
 
-                  CommandQueue.Q_High[i].uCommandIndex++;
-                  uintToString(CommandQueue.Q_High[i].uButton[0], 4, pCurrentState->strDisplay2);
-                  break;
-               case 4:
+               case 3:
                   // Wait for them to replace the tray before continuing
-                  //**could detect button or external trigger
-                  if (fWeight < -10.0) { //*** tray weight needs to be a setting
+                  //**could detect button or external trigger...
+                  if (fWeight < -pCurrentState->fTrayWeight) {
                      CommandQueue.Q_High[i].uCommandIndex++;
                   }
                   break;
-               case 5:
-                  // Wait for them to replace the tray before continuing
-                  //**could detect button or external trigger
-                  // this still isn't right...they could then
 
+               case 4:
+                  // Need a better way to wait than delay, course would it be necessary if
+                  //    tray/cell were consistent?
                   if (fWeight >= -0.1) { // should some sort of close float equals
                      CommandQueue.Q_High[i].uCommandIndex = 0;
+                     // until i figure out tray/load cell so it always sets down in the same place,
+                     // just wait a bit then tare again.
+                     HAL_Delay(500);
+                     setTare();
                   }
                   break;
             }
-            break;
+         } break;
       }
    }
 }
