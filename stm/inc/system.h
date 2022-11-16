@@ -109,12 +109,6 @@ struct _CommandQueue {
 // Create Command functions
 void create_trickle(Command* Q_Step, int8_t* indexStep, float fTargetWeight);
 void create_dump(Command* Q_Step0, Command* Q_Step1, int8_t* indexStep0, int8_t* indexStep1, int16_t iDwell);
-// Button Handlers
-void button_Calibrate(MachineState* pState, uint32_t* pWeight, uint8_t uButton);
-void button_Load_Wt(MachineState* pState, uint32_t* pWeight, uint8_t uButton);
-void button_Load_Rds(MachineState* pState, uint32_t* pWeight, uint8_t uButton);
-// Helper
-void uintToString(uint32_t uNumber, uint8_t uDesiredNumDigits, char* strNum);
 
 void runQueue(MachineState* pCurrentState, uint8_t uButton);
 void runStepperQueue(MachineState* pCurrentState, StepperMotor* stepper, Command* Q_Step, int8_t* indexStep);
